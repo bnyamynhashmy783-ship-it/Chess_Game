@@ -1,0 +1,85 @@
+import pygame
+import chess
+
+# تنظیمات صفحه برای موبایل (استفاده از ابعاد مربعی)
+WIDTH, HEIGHT = 600, 600 
+SQ_SIZE = WIDTH // 8
+pygame.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+# رنگ‌ها
+COLORS = [pygame.Color("#eeeed2"), pygame.Color("#769656")]
+PIECE_TEXT_COLORS = {
+    'P': (0, 0, 255), 'R': (0, 0, 255), 'N': (0, 0, 255), 
+    'B': (0, 0, 255), 'Q': (0, 0, 255), 'K': (0, 0, 255),
+    'p': (255, 0, 0), 'r': (255, 0, 0), 'n': (255, 0, 0), 
+    'b': (255, 0, 0), 'q': (255, 0, 0), 'k': (255, 0, 0)
+}
+
+def draw_board(screen):
+    for r in range(8):
+        for c in range(8):
+            color = COLORS[((r + c) % 2)]
+            pygame.draw.rect(screen, color, pygame.Rect(c * SQ_SIZE, r * SQ_SIZE, SQ_SIZE, SQ_SIZE))
+
+def draw_pieces(screen, board):
+    font = pygame.font.SysFont("Arial", 35, bold=True)
+    for r in range(8):
+        for c in range(8):
+            piece = board.piece_at(chess.square(c, 7 - r))
+            if piece:
+                symbol = piece.symbol()
+                color = PIECE_TEXT_COLORS[symbol]
+                # رسم متن مهره به جای عکس (برای سرعت بالاتر در موبایل)
+                text = font.render(symbol.upper(), True, color)
+                # قرار دادن متن در مرکز خانه
+                text_rect = text.get_rect(center=(c * SQ_SIZE + SQ_SIZE // 2, r * SQ_SIZE + SQ_SIZE // 2))
+                screen.blit(text, text_rect)
+
+def main():
+    board = chess.Board()
+    selected_sq = None
+    running = True
+
+    while running:
+        draw_board(screen)
+        draw_pieces(screen, board)
+        
+        if selected_sq is not None:
+            sel_c = chess.square_file(selected_sq)
+            sel_r = 7 - chess.square_rank(selected_sq)
+            pygame.draw.rect(screen, (0, 255, 0), pygame.Rect(sel_c * SQ_SIZE, sel_r * SQ_SIZE, SQ_SIZE, SQ_SIZE), 4)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            
+            # مدیریت لمس صفحه (در اندروید همان MOUSEBUTTONDOWN است)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                pos = pygame.mouse.get_pos()
+                col = pos[0] // SQ_SIZE
+                row = 7 - (pos[1] // SQ_SIZE)
+                sq = chess.square(col, row)
+
+                if selected_sq is None:
+                    if board.piece_at(sq):
+                        selected_sq = sq
+                else:
+                    move = chess.Move(selected_sq, sq)
+                    # بررسی حرکت‌های خاص مثل ارتقا سرباز (Promotion)
+                    if move in board.legal_moves or chess.Move(selected_sq, sq, chess.QUEEN) in board.legal_moves:
+                        if chess.Move(selected_sq, sq, chess.QUEEN) in board.legal_moves:
+                            move = chess.Move(selected_sq, sq, chess.QUEEN)
+                        board.push(move)
+                    selected_sq = None
+
+        if board.is_game_over():
+            print("Game Over:", board.result())
+            running = False
+
+        pygame.display.flip()
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
